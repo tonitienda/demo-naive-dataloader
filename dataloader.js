@@ -2,16 +2,44 @@
 module.exports = function (loadManyFn) {
 
     const cache = {}
+    let pending = []
+    let scheduled = false
+    function scheduleSearch() {
+        if (!scheduled) {
+            scheduled = true
 
-    async function loadMany(ids) {
-        const notCached = ids.filter(id => !cache[id])
-        if (notCached.length > 0) {
-            const results = await loadManyFn(notCached)
-            ids.forEach((id, idx) => cache[id] = Promise.resolve((results[idx])))
+            process.nextTick(async () => {
+                await runSearch()
+                scheduled = false
+            })
+        }
+    }
+
+    async function runSearch() {
+        const pendingCopy = pending.splice(0, pending.length)
+        pending = []
+
+        if (pendingCopy.length > 0) {
+            const results = await loadManyFn(pendingCopy.map(p => p.id))
+            pendingCopy.forEach(({ resolve }, idx) => resolve((results[idx])))
         }
 
-        return Promise.all(ids.map(id => cache[id]))
+    }
 
+
+    async function loadMany(ids) {
+        ids.forEach(id => {
+            if (!cache[id]) {
+                cache[id] = new Promise(resolve => {
+                    pending.push({ id, resolve })
+                })
+            }
+        })
+
+
+        scheduleSearch()
+
+        return Promise.all(ids.map(id => cache[id]))
     }
 
     return {
