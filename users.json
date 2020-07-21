@@ -20,7 +20,15 @@
         "name": "Common Friend",
         "friends": [
             1,
-            2
+            2,
+            4
+        ]
+    },
+    {
+        "id": 4,
+        "name": "Another Friend",
+        "friends": [
+            3
         ]
     }
 ]
