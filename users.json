@@ -1,0 +1,26 @@
+[
+    {
+        "id": 1,
+        "name": "John Doe",
+        "friends": [
+            2,
+            3
+        ]
+    },
+    {
+        "id": 2,
+        "name": "Jane Doe",
+        "friends": [
+            1,
+            3
+        ]
+    },
+    {
+        "id": 3,
+        "name": "Common Friend",
+        "friends": [
+            1,
+            2
+        ]
+    }
+]
