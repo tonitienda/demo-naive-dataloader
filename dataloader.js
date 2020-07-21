@@ -5,13 +5,12 @@ module.exports = function (loadManyFn) {
     let pending = []
     let scheduled = false
     function scheduleSearch() {
-        if (!scheduled) {
+        if (pending.length > 0 && !scheduled) {
             scheduled = true
-
-            process.nextTick(async () => {
+            Promise.resolve().then(() => process.nextTick(async () => {
                 await runSearch()
                 scheduled = false
-            })
+            }))
         }
     }
 
@@ -28,16 +27,17 @@ module.exports = function (loadManyFn) {
 
 
     async function loadMany(ids) {
-        ids.forEach(id => {
-            if (!cache[id]) {
+        const notCachedIds = ids.filter(id => !cache[id])
+
+        if (notCachedIds.length > 0) {
+            notCachedIds.map(id => {
                 cache[id] = new Promise(resolve => {
                     pending.push({ id, resolve })
                 })
-            }
-        })
+            })
 
-
-        scheduleSearch()
+            scheduleSearch()
+        }
 
         return Promise.all(ids.map(id => cache[id]))
     }

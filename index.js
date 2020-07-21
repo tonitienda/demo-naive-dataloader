@@ -1,46 +1,48 @@
 const repository = require('./repository')
+const DataLoader = require('./dataloader')
+const Cache = require('./cache')
 
-async function getUserWithFriends(id, levels = 1) {
+const dataloader = DataLoader(repository.loadMany)
+const cache = Cache(repository.loadMany)
 
-    const user = await repository.load(id)
+const Service = require('./service')
+const { printUser } = require('./print')
 
-    if (levels === 1) {
-        const friends = await repository.loadMany(user.friends)
-        return { ...user, friends: friends.map(({ id, name }) => ({ id, name })) }
-    }
+async function run(loader) {
+    const service = Service(loader)
 
-    const friends = await Promise.all(user.friends.map(id => getUserWithFriends(id, levels - 1)))
+    console.time(`Get Users`)
 
-    return {
-        ...user,
-        friends
-    }
-}
+    console.group(`Loading user 1 twice`)
+    const [user1, user1_2] = await Promise.all([service.getUserWithFriends(1, 5), service.getUserWithFriends(1, 5)])
+    console.groupEnd(`Loading user 1 twice`)
 
-function printUser(user, tab = 1) {
-    if (!user || !user.id) {
-        return ''
-    }
-    if (tab === 1) {
-        console.log()
-    }
-    console.group()
-    console.log(user.name)
-    if (user.friends) {
-        user.friends.map(u => printUser(u, tab + 1))
-    }
-    console.groupEnd()
+    console.group(`Loading user 2`)
+    const user2 = await service.getUserWithFriends(2, 5)
+    console.groupEnd(`Loading user 2`)
+
+    console.timeEnd(`Get Users`)
+
+    // printUser(user1)
+    // printUser(user1_2)
 }
 
 
 async function main() {
-    console.time(`Get Users`)
-    const [user1, user1_2] = await Promise.all([getUserWithFriends(1, 2), getUserWithFriends(1, 3)])
-    //const user2 = await getUserWithFriends(2, 3)
-    console.timeEnd(`Get Users`)
 
-    printUser(user1)
-    printUser(user1_2)
+    console.group('Repository')
+    await run(repository)
+    console.groupEnd('Repository')
+
+
+    console.group('Cache')
+    await run(Cache(repository.loadMany))
+    console.groupEnd('Cache')
+
+
+    console.group('Dataloader')
+    await run(DataLoader(repository.loadMany))
+    console.groupEnd('Dataloader')
 }
 
 main()
